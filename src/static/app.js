@@ -4,6 +4,50 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Function to handle participant deletion
+  async function handleDeleteParticipant(event) {
+    event.preventDefault();
+    const btn = event.target;
+    const email = btn.getAttribute("data-email");
+    const activity = btn.getAttribute("data-activity");
+
+    if (!confirm(`Are you sure you want to unregister ${email}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+        messageDiv.classList.remove("hidden");
+        
+        // Hide message after 3 seconds and refresh
+        setTimeout(() => {
+          messageDiv.classList.add("hidden");
+          fetchActivities();
+        }, 3000);
+      } else {
+        messageDiv.textContent = result.detail || "Failed to unregister";
+        messageDiv.className = "error";
+        messageDiv.classList.remove("hidden");
+      }
+    } catch (error) {
+      messageDiv.textContent = "Failed to unregister. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error unregistering:", error);
+    }
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -20,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
         const participantsList = details.participants.length > 0 
-          ? details.participants.map(p => `<li>${p}</li>`).join("") 
+          ? details.participants.map(p => `<li>${p}<button class="delete-btn" data-email="${p}" data-activity="${name}" title="Unregister">×</button></li>`).join("") 
           : "<li><em>No participants yet</em></li>";
 
         activityCard.innerHTML = `
@@ -37,6 +81,12 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+        // Add delete button event listeners
+        const deleteButtons = activityCard.querySelectorAll(".delete-btn");
+        deleteButtons.forEach(btn => {
+          btn.addEventListener("click", handleDeleteParticipant);
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
